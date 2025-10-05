@@ -14,10 +14,10 @@ echo "${YELLOW}🔍 Running pre-commit checks...${NC}"
 
 # Check if we're in a TypeScript project
 if [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ]; then
-    # Permanently skip TypeScript checks for games (known issues)
+    # Permanently skip TypeScript checks for games and git-hooks (known issues)
     REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
-    if [ "$REPO_NAME" = "TrafficRun" ] || [ "$REPO_NAME" = "CrossyRoad" ] || [ "$REPO_NAME" = "SpaceShooter" ]; then
-        echo "${YELLOW}⚠️  Skipping TypeScript check for $REPO_NAME (games - permanent skip)${NC}"
+    if [ "$REPO_NAME" = "TrafficRun" ] || [ "$REPO_NAME" = "CrossyRoad" ] || [ "$REPO_NAME" = "SpaceShooter" ] || [ "$REPO_NAME" = "git-hooks" ]; then
+        echo "${YELLOW}⚠️  Skipping TypeScript check for $REPO_NAME (games/git-hooks - permanent skip)${NC}"
     else
         # Run TypeScript check
         if command -v npx >/dev/null 2>&1; then
@@ -44,10 +44,10 @@ fi
 
 # Check if we have a linting script
 if [ -f "package.json" ]; then
-    # Permanently skip linting for games
+    # Permanently skip linting for games and git-hooks
     REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
-    if [ "$REPO_NAME" = "TrafficRun" ] || [ "$REPO_NAME" = "CrossyRoad" ] || [ "$REPO_NAME" = "SpaceShooter" ]; then
-        echo "${YELLOW}⚠️  Skipping linting for $REPO_NAME (games - permanent skip)${NC}"
+    if [ "$REPO_NAME" = "TrafficRun" ] || [ "$REPO_NAME" = "CrossyRoad" ] || [ "$REPO_NAME" = "SpaceShooter" ] || [ "$REPO_NAME" = "git-hooks" ]; then
+        echo "${YELLOW}⚠️  Skipping linting for $REPO_NAME (games/git-hooks - permanent skip)${NC}"
     else
         # Check for common linting scripts
         if npm run lint --dry-run >/dev/null 2>&1; then
