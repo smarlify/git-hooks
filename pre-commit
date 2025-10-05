@@ -14,15 +14,20 @@ echo "${YELLOW}🔍 Running pre-commit checks...${NC}"
 
 # Check if we're in a TypeScript project
 if [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ]; then
-    echo "${YELLOW}📝 Running TypeScript check...${NC}"
-
     # Run TypeScript check
     if command -v npx >/dev/null 2>&1; then
-        # echo "${YELLOW}⚠️  TypeScript check temporarily disabled due to Node.js library issue${NC}"
-        if npx tsc --noEmit; then
+        echo "${YELLOW}📝 Running TypeScript check...${NC}"
+        
+        # Run TypeScript check and capture output
+        TSC_OUTPUT=$(npx tsc --noEmit 2>&1)
+        TSC_EXIT_CODE=$?
+        
+        if [ $TSC_EXIT_CODE -eq 0 ]; then
             echo "${GREEN}✅ TypeScript check passed${NC}"
         else
             echo "${RED}❌ TypeScript check failed${NC}"
+            echo "${RED}TypeScript errors:${NC}"
+            echo "$TSC_OUTPUT"
             echo "${RED}Please fix TypeScript errors before committing.${NC}"
             exit 1
         fi
@@ -37,19 +42,24 @@ if [ -f "package.json" ]; then
     if npm run lint --dry-run >/dev/null 2>&1; then
         echo "${YELLOW}🧹 Running linter...${NC}"
 
-        # Run linter
-        if npm run lint; then
+        # Run linter and capture output
+        LINT_OUTPUT=$(npm run lint 2>&1)
+        LINT_EXIT_CODE=$?
+
+        if [ $LINT_EXIT_CODE -eq 0 ]; then
             echo "${GREEN}✅ Linting passed${NC}"
+            
+            # Auto-stage any fixes made by the linter
+            if [ -n "$(git diff --cached --name-only)" ]; then
+                echo "${YELLOW}📦 Auto-staging linter fixes...${NC}"
+                git add .
+            fi
         else
             echo "${RED}❌ Linting failed${NC}"
+            echo "${RED}Linting errors:${NC}"
+            echo "$LINT_OUTPUT"
             echo "${RED}Please fix linting errors before committing.${NC}"
             exit 1
-        fi
-
-        # Auto-stage any fixes made by the linter
-        if [ -n "$(git diff --cached --name-only)" ]; then
-            echo "${YELLOW}📦 Auto-staging linter fixes...${NC}"
-            git add .
         fi
     else
         echo "${YELLOW}⚠️  No lint script found, skipping linting${NC}"
