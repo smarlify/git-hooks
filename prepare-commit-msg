@@ -2,6 +2,11 @@
 # Gitmoji and Conventional Commits Helper
 # This hook helps ensure consistent commit messages with Gitmoji and conventional commit format
 
+# SAFE GIT PRACTICES REMINDER
+# Always use --force-with-lease instead of --force when force pushing!
+# --force-with-lease is safer as it checks if the remote has been updated by others
+# Example: git push origin main --force-with-lease
+
 # Gitmoji reference
 GITMOJI_REF="
 🎨 :art: improve structure / format of the code
