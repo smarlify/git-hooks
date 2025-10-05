@@ -6,6 +6,13 @@
 # Always use --force-with-lease instead of --force when force pushing!
 # --force-with-lease is safer as it checks if the remote has been updated by others
 # Example: git push origin main --force-with-lease
+#
+# ALWAYS UPDATE .gitignore FIRST!
+# Before committing build artifacts, temporary files, or generated content:
+# 1. Update .gitignore to exclude them
+# 2. Remove them from staging: git rm --cached <files>
+# 3. Then commit the .gitignore changes
+# This prevents accidentally committing build files that should never be in version control
 
 # Gitmoji reference
 GITMOJI_REF="
