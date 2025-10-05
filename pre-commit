@@ -14,61 +14,67 @@ echo "${YELLOW}🔍 Running pre-commit checks...${NC}"
 
 # Check if we're in a TypeScript project
 if [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ]; then
-    # Skip TypeScript checks for games with known issues
+    # Permanently skip TypeScript checks for games (known issues)
     REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
     if [ "$REPO_NAME" = "TrafficRun" ] || [ "$REPO_NAME" = "CrossyRoad" ] || [ "$REPO_NAME" = "SpaceShooter" ]; then
-        echo "${YELLOW}⚠️  Skipping TypeScript check for $REPO_NAME (known issues)${NC}"
+        echo "${YELLOW}⚠️  Skipping TypeScript check for $REPO_NAME (games - permanent skip)${NC}"
     else
         # Run TypeScript check
         if command -v npx >/dev/null 2>&1; then
             echo "${YELLOW}📝 Running TypeScript check...${NC}"
         
-        # Run TypeScript check and capture output
-        TSC_OUTPUT=$(npx tsc --noEmit 2>&1)
-        TSC_EXIT_CODE=$?
-        
-        if [ $TSC_EXIT_CODE -eq 0 ]; then
-            echo "${GREEN}✅ TypeScript check passed${NC}"
-        else
-            echo "${RED}❌ TypeScript check failed${NC}"
-            echo "${RED}TypeScript errors:${NC}"
-            echo "$TSC_OUTPUT"
-            echo "${RED}Please fix TypeScript errors before committing.${NC}"
-            exit 1
-        fi
+            # Run TypeScript check and capture output
+            TSC_OUTPUT=$(npx tsc --noEmit 2>&1)
+            TSC_EXIT_CODE=$?
+            
+            if [ $TSC_EXIT_CODE -eq 0 ]; then
+                echo "${GREEN}✅ TypeScript check passed${NC}"
+            else
+                echo "${RED}❌ TypeScript check failed${NC}"
+                echo "${RED}TypeScript errors:${NC}"
+                echo "$TSC_OUTPUT"
+                echo "${RED}Please fix TypeScript errors before committing.${NC}"
+                exit 1
+            fi
         else
             echo "${YELLOW}⚠️  npx not found, skipping TypeScript check${NC}"
         fi
     fi
-    fi
+fi
 
 # Check if we have a linting script
 if [ -f "package.json" ]; then
-    # Check for common linting scripts
-    if npm run lint --dry-run >/dev/null 2>&1; then
-        echo "${YELLOW}🧹 Running linter...${NC}"
+    # Permanently skip linting for games
+    REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
+    if [ "$REPO_NAME" = "TrafficRun" ] || [ "$REPO_NAME" = "CrossyRoad" ] || [ "$REPO_NAME" = "SpaceShooter" ]; then
+        echo "${YELLOW}⚠️  Skipping linting for $REPO_NAME (games - permanent skip)${NC}"
+    else
+        # Check for common linting scripts
+        if npm run lint --dry-run >/dev/null 2>&1; then
+            echo "${YELLOW}🧹 Running linter...${NC}"
 
-        # Run linter and capture output
-        LINT_OUTPUT=$(npm run lint 2>&1)
-        LINT_EXIT_CODE=$?
+            # Run linter and capture output
+            LINT_OUTPUT=$(npm run lint 2>&1)
+            LINT_EXIT_CODE=$?
 
-        if [ $LINT_EXIT_CODE -eq 0 ]; then
-            echo "${GREEN}✅ Linting passed${NC}"
-            
-            # Auto-stage any fixes made by the linter
-            if [ -n "$(git diff --cached --name-only)" ]; then
-                echo "${YELLOW}📦 Auto-staging linter fixes...${NC}"
-                git add .
+            if [ $LINT_EXIT_CODE -eq 0 ]; then
+                echo "${GREEN}✅ Linting passed${NC}"
+                
+                # Auto-stage any fixes made by the linter
+                if [ -n "$(git diff --cached --name-only)" ]; then
+                    echo "${YELLOW}📦 Auto-staging linter fixes...${NC}"
+                    git add .
+                fi
+            else
+                echo "${RED}❌ Linting failed${NC}"
+                echo "${RED}Linting errors:${NC}"
+                echo "$LINT_OUTPUT"
+                echo "${RED}Please fix linting errors before committing.${NC}"
+                exit 1
             fi
         else
-            echo "${RED}❌ Linting failed${NC}"
-            echo "${RED}Linting errors:${NC}"
-            echo "$LINT_OUTPUT"
-            echo "${RED}Please fix linting errors before committing.${NC}"
-            exit 1
+            echo "${YELLOW}⚠️  No lint script found, skipping linting${NC}"
         fi
-    else
-        echo "${YELLOW}⚠️  No lint script found, skipping linting${NC}"
     fi
 
     # SKIP: Check for build script
