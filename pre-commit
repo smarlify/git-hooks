@@ -1,0 +1,76 @@
+#!/bin/sh
+# .git/hooks/pre-commit
+#
+# This hook is executed before a commit is made.
+# It runs TypeScript checking and linting, and auto-stages fixes.
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "${YELLOW}🔍 Running pre-commit checks...${NC}"
+
+# Check if we're in a TypeScript project
+if [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ]; then
+    echo "${YELLOW}📝 Running TypeScript check...${NC}"
+
+    # Run TypeScript check
+    if command -v npx >/dev/null 2>&1; then
+        # echo "${YELLOW}⚠️  TypeScript check temporarily disabled due to Node.js library issue${NC}"
+        if npx tsc --noEmit; then
+            echo "${GREEN}✅ TypeScript check passed${NC}"
+        else
+            echo "${RED}❌ TypeScript check failed${NC}"
+            echo "${RED}Please fix TypeScript errors before committing.${NC}"
+            exit 1
+        fi
+    else
+        echo "${YELLOW}⚠️  npx not found, skipping TypeScript check${NC}"
+    fi
+fi
+
+# Check if we have a linting script
+if [ -f "package.json" ]; then
+    # Check for common linting scripts
+    if npm run lint --dry-run >/dev/null 2>&1; then
+        echo "${YELLOW}🧹 Running linter...${NC}"
+
+        # Run linter
+        if npm run lint; then
+            echo "${GREEN}✅ Linting passed${NC}"
+        else
+            echo "${RED}❌ Linting failed${NC}"
+            echo "${RED}Please fix linting errors before committing.${NC}"
+            exit 1
+        fi
+
+        # Auto-stage any fixes made by the linter
+        if [ -n "$(git diff --cached --name-only)" ]; then
+            echo "${YELLOW}📦 Auto-staging linter fixes...${NC}"
+            git add .
+        fi
+    else
+        echo "${YELLOW}⚠️  No lint script found, skipping linting${NC}"
+    fi
+
+    # Check for build script
+    # if npm run build --dry-run >/dev/null 2>&1; then
+    #     echo "${YELLOW}🔨 Running build check...${NC}"
+    #
+    #     # Run build to ensure everything compiles
+    #     if npm run build; then
+    #         echo "${GREEN}✅ Build check passed${NC}"
+    #     else
+    #         echo "${RED}❌ Build check failed${NC}"
+    #         echo "${RED}Please fix build errors before committing.${NC}"
+    #         exit 1
+    #     fi
+    # else
+    #     echo "${YELLOW}⚠️  No build script found, skipping build check${NC}"
+    # fi
+fi
+
+echo "${GREEN}🎉 All pre-commit checks passed!${NC}"
+exit 0

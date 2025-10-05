@@ -1,0 +1,177 @@
+#!/bin/sh
+# Gitmoji and Conventional Commits Helper
+# This hook helps ensure consistent commit messages with Gitmoji and conventional commit format
+
+# Gitmoji reference
+GITMOJI_REF="
+🎨 :art: improve structure / format of the code
+⚡️ :zap: improve performance
+🔥 :fire: remove code or files
+🐛 :bug: fix a bug
+🚑️ :ambulance: critical hotfix
+✨ :sparkles: introduce new features
+📝 :memo: add or update documentation
+🚀 :rocket: deploy stuff
+💄 :lipstick: add or update the UI and style files
+🎉 :tada: begin a project
+✅ :white_check_mark: add, update, or pass tests
+🔒️ :lock: fix security issues
+🔖 :bookmark: release / version tags
+🌐 :globe_with_meridians: internationalization and localization
+💚 :green_heart: fix CI Build
+⬇️ :arrow_down: downgrade dependencies
+⬆️ :arrow_up: upgrade dependencies
+📌 :pushpin: pin dependencies to specific versions
+👷 :construction_worker: add or update CI build system
+📈 :chart_with_upwards_trend: add or update analytics or track code
+♻️ :recycle: refactor code
+➕ :heavy_plus_sign: add a dependency
+➖ :heavy_minus_sign: remove a dependency
+🔧 :wrench: add or update configuration files
+🔨 :hammer: add or update development scripts
+🌍 :earth_americas: fix text and literals
+💩 :poop: write bad code that needs to be improved
+⏪️ :rewind: revert changes
+🔀 :twisted_rightwards_arrows: merge branches
+📦 :package: add or update compiled files or packages
+👽️ :alien: update code due to external API changes
+🚚 :truck: move or rename resources (e.g.: files, paths, routes)
+📄 :page_facing_up: add or update license
+💥 :boom: introduce breaking changes
+🍱 :bento: add or update assets
+♿️ :wheelchair: improve accessibility
+💡 :bulb: add or update comments in source code
+🍻 :beers: write code drunkenly
+💬 :speech_balloon: add or update text and literals
+🗃️ :card_file_box: perform database related changes
+🔊 :loud_sound: add or update logs
+🔇 :mute: remove logs
+👥 :busts_in_silhouette: add or update contributor(s)
+🚸 :children_crossing: improve user experience / usability
+🏗️ :building_construction: make architectural changes
+📱 :iphone: work on responsive design
+🤡 :clown_face: mock things
+🥚 :egg: add or update an easter egg
+🙈 :see_no_evil: add or update a .gitignore file
+📸 :camera_flash: add or update snapshots
+⚙️ :gear: add or update configuration
+🩹 :adhesive_bandage: simple fix for a non-critical issue
+🧐 :monocle_face: data exploration/inspection
+⚗️ :alembic: perform experiments
+🔍 :mag: improve SEO
+☸️ :wheel_of_dharma: work about containerization
+🏷️ :label: add or update types
+🌱 :seedling: add or update seed files
+🚩 :triangular_flag_on_post: add, update, or remove feature flags
+🥅 :goal_net: catch errors
+💫 :dizzy: add or update animations and transitions
+🗑️ :wastebasket: remove code or files
+🛂 :passport_control: work on code related to authorization, roles and permissions
+🛃 :customs: work on internationalization
+🛄 :baggage_claim: work on code related to logging
+🛅 :left_luggage: work on code related to validation
+🛋️ :couch_and_lamp: work on code related to the UI/UX
+🛏️ :bed: work on code related to the UI/UX
+🛠️ :hammer_and_wrench: work on code related to the UI/UX
+🛡️ :shield: work on code related to security
+🛢️ :oil_drum: work on code related to configuration
+🛣️ :motorway: work on code related to routing
+🛤️ :railway_track: work on code related to routing
+🛥️ :motor_boat: work on code related to routing
+🛩️ :small_airplane: work on code related to routing
+🛫 :airplane_departure: work on code related to routing
+🛬 :airplane_arriving: work on code related to routing
+🛰️ :satellite: work on code related to routing
+🛳️ :passenger_ship: work on code related to routing
+🛴 :kick_scooter: work on code related to routing
+🛵 :motor_scooter: work on code related to routing
+🛶 :canoe: work on code related to routing
+🛷 :sled: work on code related to routing
+🛸 :flying_saucer: work on code related to routing
+🛹 :skateboard: work on code related to routing
+🛺 :auto_rickshaw: work on code related to routing
+"
+
+# Function to show gitmoji help
+show_gitmoji_help() {
+    echo "🎯 Gitmoji Reference:"
+    echo "$GITMOJI_REF"
+    echo ""
+    echo "📝 Conventional Commit Format:"
+    echo "<gitmoji> <type>(<scope>): <description>"
+    echo ""
+    echo "Examples:"
+    echo "✨ feat(auth): add OAuth2 login"
+    echo "🐛 fix(api): resolve user validation error"
+    echo "📝 docs(readme): update installation guide"
+    echo "🎨 style(ui): improve button hover effects"
+    echo "♻️ refactor(utils): simplify date formatting"
+    echo ""
+}
+
+# Function to prompt for commit message
+prompt_commit_message() {
+    echo "🎯 Gitmoji & Conventional Commits Helper"
+    echo "=========================================="
+    echo ""
+    
+    # Show help if requested
+    if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+        show_gitmoji_help
+        exit 0
+    fi
+    
+    # Get current branch
+    BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    
+    # Get staged files
+    STAGED_FILES=$(git diff --cached --name-only)
+    
+    echo "📋 Current branch: $BRANCH"
+    echo "📁 Staged files:"
+    echo "$STAGED_FILES" | sed 's/^/  - /'
+    echo ""
+    
+    # Suggest commit type based on staged files
+    if echo "$STAGED_FILES" | grep -q "\.md$"; then
+        SUGGESTED_TYPE="docs"
+        SUGGESTED_EMOJI="📝"
+    elif echo "$STAGED_FILES" | grep -q "test"; then
+        SUGGESTED_TYPE="test"
+        SUGGESTED_EMOJI="✅"
+    elif echo "$STAGED_FILES" | grep -q "style\|css\|scss"; then
+        SUGGESTED_TYPE="style"
+        SUGGESTED_EMOJI="🎨"
+    elif echo "$STAGED_FILES" | grep -q "package\.json\|yarn\.lock\|package-lock\.json"; then
+        SUGGESTED_TYPE="build"
+        SUGGESTED_EMOJI="⬆️"
+    else
+        SUGGESTED_TYPE="feat"
+        SUGGESTED_EMOJI="✨"
+    fi
+    
+    echo "💡 Suggested: $SUGGESTED_EMOJI $SUGGESTED_TYPE"
+    echo ""
+    
+    # Prompt for commit message
+    read -p "🎯 Enter your commit message (or 'help' for gitmoji reference): " COMMIT_MSG
+    
+    if [ "$COMMIT_MSG" = "help" ]; then
+        show_gitmoji_help
+        prompt_commit_message
+        return
+    fi
+    
+    # If no message provided, use suggested
+    if [ -z "$COMMIT_MSG" ]; then
+        COMMIT_MSG="$SUGGESTED_TYPE: update staged files"
+    fi
+    
+    # Write to commit message file
+    echo "$SUGGESTED_EMOJI $COMMIT_MSG" > "$1"
+}
+
+# Main execution
+if [ "$1" = "prepare-commit-msg" ]; then
+    prompt_commit_message "$2"
+fi
