@@ -95,4 +95,18 @@ if [ -f "package.json" ]; then
 fi
 
 echo "${GREEN}🎉 All pre-commit checks passed!${NC}"
+# GA HARD-CODE REMINDER
+# Non-blocking notice: we hard-code GA gtag ID to avoid env drift breaking analytics
+if git rev-parse --show-toplevel >/dev/null 2>&1; then
+    REPO_ROOT=$(git rev-parse --show-toplevel)
+    REPO_NAME=$(basename "$REPO_ROOT")
+    # Only show for web apps likely to use GA
+    if [ "$REPO_NAME" = "_DavidNekovar.cz" ] || [ -f "$REPO_ROOT/src/app/layout.tsx" ] || [ -f "$REPO_ROOT/src/index.html" ]; then
+        # Check staged content for env-based GA usage
+        if git diff --cached -U0 | grep -E "NEXT_PUBLIC_GA_ID|process\.env\.NEXT_PUBLIC_GA_ID" >/dev/null 2>&1; then
+            echo "${YELLOW}⚠️  GA NOTICE:${NC} Use a hard-coded GA4 Measurement ID (e.g., G-PVJHW3FCFK)."
+            echo "${YELLOW}    Reason:${NC} Avoid env drift that can silently disable analytics."
+        fi
+    fi
+fi
 exit 0
