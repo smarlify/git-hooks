@@ -41,7 +41,9 @@ fi
 
 # Load shared functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/security-check.sh"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/quality-checks.sh"
 
 # CRITICAL: Check for sensitive data in commits being pushed
@@ -56,41 +58,24 @@ if ! check_commits "$COMMITS_TO_CHECK"; then
     exit 1
 fi
 
-# Detect project type
-PROJECT_INFO=$(detect_project_type)
-REPO_NAME=$(echo "$PROJECT_INFO" | cut -d'|' -f1)
-IS_RAILS_PROJECT=$(echo "$PROJECT_INFO" | cut -d'|' -f2)
-IS_TYPESCRIPT_PROJECT=$(echo "$PROJECT_INFO" | cut -d'|' -f3)
-
-# Skip TypeScript and linting checks (already run in pre-commit)
 echo "${YELLOW}💡 TypeScript and linting checks already passed in pre-commit${NC}"
 
-# Check if pushing to Heroku (skip Cypress tests for Heroku deployments)
+# Detect Heroku push (by remote name or URL)
 REMOTE_URL=$(git remote get-url "$REMOTE_NAME" 2>/dev/null || git remote get-url heroku 2>/dev/null)
 IS_HEROKU_PUSH=false
-if echo "$REMOTE_URL" | grep -q "heroku"; then
+if [ "$REMOTE_NAME" = "heroku" ] || echo "$REMOTE_URL" | grep -q "heroku"; then
     IS_HEROKU_PUSH=true
-    echo "${BLUE}🎯 Pushing to Heroku - skipping local Cypress tests${NC}"
-    echo "${YELLOW}💡 Tests will run against deployed Heroku app with: npm run test:heroku${NC}"
-else
-    # Run Cypress tests for non-Heroku pushes
-    # COMMENTED OUT: Temporarily skipping Cypress tests
-    # IS_MAIN_BRANCH="false"
-    # if [ "$1" = "refs/heads/main" ] || [ "$1" = "refs/heads/master" ]; then
-    #     IS_MAIN_BRANCH="true"
-    # fi
-
-    # if ! run_cypress_tests "$IS_MAIN_BRANCH"; then
-    #     exit 1
-    # fi
-    echo "${YELLOW}💡 Cypress tests skipped (temporarily commented out)${NC}"
 fi
 
-# Run build check for Heroku deployments
 if [ "$IS_HEROKU_PUSH" = true ]; then
+    echo "${BLUE}🎯 Pushing to Heroku - skipping local tests${NC}"
+    echo "${YELLOW}💡 Run tests against the deployed app after deploy if needed${NC}"
     echo "${BLUE}🎯 Ensuring production readiness...${NC}"
-    
     if ! run_build_check; then
+        exit 1
+    fi
+else
+    if ! run_tests; then
         exit 1
     fi
 fi

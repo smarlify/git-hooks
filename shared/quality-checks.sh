@@ -1,6 +1,7 @@
 #!/bin/bash
 # shared/quality-checks.sh
-# Reusable quality check functions for git hooks
+# Reusable quality check functions for git hooks.
+# Capability-based: run a check only when the project exposes it at the repo root.
 
 # Colors for output (only if outputting to a terminal)
 if [ -t 1 ]; then
@@ -17,154 +18,119 @@ else
     NC=''
 fi
 
-# Function to run TypeScript check
-run_typescript_check() {
-    local repo_name="$1"
-    
-    # Permanently skip TypeScript checks for games (known issues)
-    if [ "$repo_name" = "TrafficRun" ] || [ "$repo_name" = "CrossyRoad" ] || [ "$repo_name" = "SpaceShooter" ]; then
-        echo "${YELLOW}⚠️  Skipping TypeScript check for $repo_name (games - permanent skip)${NC}"
-        return 0
+# True when package.json defines an npm script with the given name.
+# Do not use `npm run --dry-run` — some npm versions still execute the script.
+has_npm_script() {
+    local script_name="$1"
+    [ -f "package.json" ] || return 1
+    if command -v node >/dev/null 2>&1; then
+        node -e "const s=require('./package.json').scripts||{}; process.exit(s[process.argv[1]]?0:1)" "$script_name"
+        return $?
     fi
-    
-    if command -v npx >/dev/null 2>&1; then
-        echo "${YELLOW}📝 Running TypeScript check...${NC}"
-        
+    # Best-effort fallback without Node
+    grep -Eq "\"${script_name}\"[[:space:]]*:" package.json
+}
+
+has_root_tsconfig() {
+    [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ]
+}
+
+# Prefer `npm run tsc` when present; otherwise bare `npx tsc --noEmit` if a root tsconfig exists.
+run_typescript_check() {
+    if has_npm_script tsc; then
+        echo "${YELLOW}📝 Running TypeScript check (npm run tsc)...${NC}"
+        TSC_OUTPUT=$(npm run tsc 2>&1)
+        TSC_EXIT_CODE=$?
+    elif has_root_tsconfig && command -v npx >/dev/null 2>&1; then
+        echo "${YELLOW}📝 Running TypeScript check (npx tsc --noEmit)...${NC}"
         TSC_OUTPUT=$(npx tsc --noEmit 2>&1)
         TSC_EXIT_CODE=$?
-        
-        if [ $TSC_EXIT_CODE -eq 0 ]; then
-            echo "${GREEN}✅ TypeScript check passed${NC}"
-            return 0
-        else
-            echo "${RED}❌ TypeScript check failed${NC}"
-            echo "${RED}TypeScript errors:${NC}"
-            echo "$TSC_OUTPUT"
-            echo "${RED}Please fix TypeScript errors before committing.${NC}"
-            return 1
-        fi
-    fi
-    
-    return 0
-}
-
-# Function to run linting
-run_linting() {
-    local repo_name="$1"
-    
-    if [ "$repo_name" = "TrafficRun" ] || [ "$repo_name" = "CrossyRoad" ] || [ "$repo_name" = "SpaceShooter" ]; then
-        echo "${YELLOW}⚠️  Skipping linting for $repo_name (games - permanent skip)${NC}"
+    else
+        echo "${YELLOW}⚠️  No TypeScript check available, skipping${NC}"
         return 0
     fi
-    
-    if [ -f "package.json" ] && npm run lint --dry-run >/dev/null 2>&1; then
-        echo "${YELLOW}🧹 Running linter...${NC}"
-        
-        LINT_OUTPUT=$(npm run lint 2>&1)
-        LINT_EXIT_CODE=$?
-        
-        if [ $LINT_EXIT_CODE -eq 0 ]; then
-            echo "${GREEN}✅ Linting passed${NC}"
-            return 0
-        else
-            echo "${RED}❌ Linting failed${NC}"
-            echo "${RED}Linting errors:${NC}"
-            echo "$LINT_OUTPUT"
-            echo "${RED}Please fix linting errors before committing.${NC}"
-            return 1
-        fi
+
+    if [ $TSC_EXIT_CODE -eq 0 ]; then
+        echo "${GREEN}✅ TypeScript check passed${NC}"
+        return 0
     fi
-    
-    return 0
+
+    echo "${RED}❌ TypeScript check failed${NC}"
+    echo "${RED}TypeScript errors:${NC}"
+    echo "$TSC_OUTPUT"
+    echo "${RED}Please fix TypeScript errors before committing.${NC}"
+    return 1
 }
 
-# Function to run build check
+run_linting() {
+    if ! has_npm_script lint; then
+        echo "${YELLOW}⚠️  No lint script found, skipping linting${NC}"
+        return 0
+    fi
+
+    echo "${YELLOW}🧹 Running linter...${NC}"
+    LINT_OUTPUT=$(npm run lint 2>&1)
+    LINT_EXIT_CODE=$?
+
+    if [ $LINT_EXIT_CODE -eq 0 ]; then
+        echo "${GREEN}✅ Linting passed${NC}"
+        return 0
+    fi
+
+    echo "${RED}❌ Linting failed${NC}"
+    echo "${RED}Linting errors:${NC}"
+    echo "$LINT_OUTPUT"
+    echo "${RED}Please fix linting errors before committing.${NC}"
+    return 1
+}
+
 run_build_check() {
-    if [ -f "package.json" ] && npm run build --dry-run >/dev/null 2>&1; then
-        echo "${YELLOW}🔨 Running build check...${NC}"
-        
-        BUILD_OUTPUT=$(npm run build 2>&1)
-        BUILD_EXIT_CODE=$?
-        
-        if [ $BUILD_EXIT_CODE -eq 0 ]; then
-            echo "${GREEN}✅ Build check passed${NC}"
-            return 0
-        else
-            echo "${RED}❌ Build check failed${NC}"
-            echo "${RED}Build errors:${NC}"
-            echo "$BUILD_OUTPUT"
-            echo "${RED}Please fix build errors before pushing.${NC}"
-            return 1
-        fi
-    else
+    if ! has_npm_script build; then
         echo "${YELLOW}⚠️  No build script found, skipping build check${NC}"
         return 0
     fi
+
+    echo "${YELLOW}🔨 Running build check...${NC}"
+    BUILD_OUTPUT=$(npm run build 2>&1)
+    BUILD_EXIT_CODE=$?
+
+    if [ $BUILD_EXIT_CODE -eq 0 ]; then
+        echo "${GREEN}✅ Build check passed${NC}"
+        return 0
+    fi
+
+    echo "${RED}❌ Build check failed${NC}"
+    echo "${RED}Build errors:${NC}"
+    echo "$BUILD_OUTPUT"
+    echo "${RED}Please fix build errors before pushing.${NC}"
+    return 1
 }
 
-# Function to run Cypress tests
-run_cypress_tests() {
-    local is_main_branch="$1"  # "true" or "false"
-    
-    if [ -f "package.json" ] && [ -d "cypress" ]; then
-        if grep -q '"test"' package.json; then
-            # Check if dev server is running (with timeout)
-            if curl -s --max-time 2 http://localhost:3000 >/dev/null 2>&1; then
-                echo "${YELLOW}🧪 Running Cypress tests...${NC}"
-                
-                # Load nvm if available
-                if [ -s "$HOME/.nvm/nvm.sh" ]; then
-                    . "$HOME/.nvm/nvm.sh"
-                fi
-                
-                TEST_OUTPUT=$(npm run test 2>&1)
-                TEST_EXIT_CODE=$?
-                
-                if [ $TEST_EXIT_CODE -eq 0 ]; then
-                    echo "${GREEN}✅ All Cypress tests passed${NC}"
-                    return 0
-                else
-                    echo "${RED}❌ Cypress tests failed${NC}"
-                    echo "${RED}Test output:${NC}"
-                    echo "$TEST_OUTPUT"
-                    echo "${RED}Please fix failing tests before pushing.${NC}"
-                    return 1
-                fi
-            else
-                if [ "$is_main_branch" = "true" ]; then
-                    echo "${RED}❌ Dev server not running on port 3000 - required for main branch${NC}"
-                    echo "${RED}Please start server with: npm run dev${NC}"
-                    return 1
-                else
-                    echo "${YELLOW}⚠️  Dev server not running on port 3000 - skipping Cypress tests${NC}"
-                    echo "${YELLOW}💡 Consider running tests locally before pushing: npm run dev && npm run test${NC}"
-                    return 0
-                fi
-            fi
-        else
-            echo "${YELLOW}⚠️  No test script found, skipping Cypress tests${NC}"
-            return 0
-        fi
+# Runs whatever `npm test` is for this repo (Vitest, Jest, Cypress wrapper, etc.).
+run_tests() {
+    if ! has_npm_script test; then
+        echo "${YELLOW}⚠️  No test script found, skipping tests${NC}"
+        return 0
     fi
-    
-    return 0
-}
 
-# Function to detect project type
-detect_project_type() {
-    local repo_name=$(basename "$(git rev-parse --show-toplevel)")
-    local is_rails_project=false
-    local is_typescript_project=false
-    
-    # Check for Rails project
-    if [ -f "Gemfile" ] && [ -f "config/application.rb" ]; then
-        is_rails_project=true
+    echo "${YELLOW}🧪 Running tests (npm test)...${NC}"
+
+    if [ -s "$HOME/.nvm/nvm.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$HOME/.nvm/nvm.sh"
     fi
-    
-    # Check for TypeScript project
-    if [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ]; then
-        is_typescript_project=true
+
+    TEST_OUTPUT=$(npm test 2>&1)
+    TEST_EXIT_CODE=$?
+
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+        echo "${GREEN}✅ All tests passed${NC}"
+        return 0
     fi
-    
-    echo "$repo_name|$is_rails_project|$is_typescript_project"
+
+    echo "${RED}❌ Tests failed${NC}"
+    echo "${RED}Test output:${NC}"
+    echo "$TEST_OUTPUT"
+    echo "${RED}Please fix failing tests before pushing.${NC}"
+    return 1
 }

@@ -36,7 +36,9 @@ fi
 
 # Load shared functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/security-check.sh"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/quality-checks.sh"
 
 # CRITICAL: Check for sensitive data in staged files
@@ -44,28 +46,17 @@ if ! check_staged_files; then
     exit 1
 fi
 
-# Detect project type
-PROJECT_INFO=$(detect_project_type)
-REPO_NAME=$(echo "$PROJECT_INFO" | cut -d'|' -f1)
-IS_RAILS_PROJECT=$(echo "$PROJECT_INFO" | cut -d'|' -f2)
-IS_TYPESCRIPT_PROJECT=$(echo "$PROJECT_INFO" | cut -d'|' -f3)
-
-# Run TypeScript check
-if [ "$IS_TYPESCRIPT_PROJECT" = "true" ]; then
-    if ! run_typescript_check "$REPO_NAME"; then
-        exit 1
-    fi
+# Run TypeScript check when available (npm run tsc or root tsconfig)
+if ! run_typescript_check; then
+    exit 1
 fi
 
-# Run linting
-if [ -f "package.json" ]; then
-    if ! run_linting "$REPO_NAME"; then
-        exit 1
-    fi
+# Run linting when a lint script exists
+if ! run_linting; then
+    exit 1
 fi
 
-# Skip Cypress tests in pre-commit (run in pre-push instead for better performance)
-echo "${YELLOW}💡 Cypress tests will run during pre-push for better performance${NC}"
+echo "${YELLOW}💡 Tests will run during pre-push for better performance${NC}"
 
 echo "${GREEN}🎉 All pre-commit checks passed!${NC}"
 exit 0
