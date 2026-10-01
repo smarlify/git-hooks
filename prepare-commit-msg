@@ -183,7 +183,15 @@ prompt_commit_message() {
     echo "$SUGGESTED_EMOJI $COMMIT_MSG" > "$1"
 }
 
-# Main execution
-if [ "$1" = "prepare-commit-msg" ]; then
-    prompt_commit_message "$2"
-fi
+# Main execution — Git passes: prepare-commit-msg <commit-msg-file> [<source> [<sha>]]
+# Skip amend/merge/squash/commit -m / -F sources so we don't overwrite an existing message.
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="${2:-}"
+case "$COMMIT_SOURCE" in
+    merge|squash|commit|message) ;;
+    *)
+        if [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
+            prompt_commit_message "$COMMIT_MSG_FILE"
+        fi
+        ;;
+esac
