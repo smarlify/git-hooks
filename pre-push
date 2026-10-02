@@ -44,6 +44,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/security-check.sh"
 # shellcheck source=/dev/null
+source "$SCRIPT_DIR/shared/personal-data-check.sh"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/quality-checks.sh"
 
 # CRITICAL: Check for sensitive data in commits being pushed
@@ -55,6 +57,10 @@ while read local_ref local_sha remote_ref remote_sha; do
 done
 
 if ! check_commits "$COMMITS_TO_CHECK"; then
+    exit 1
+fi
+
+if ! check_personal_data_commits "$COMMITS_TO_CHECK"; then
     exit 1
 fi
 
