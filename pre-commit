@@ -39,10 +39,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/security-check.sh"
 # shellcheck source=/dev/null
+source "$SCRIPT_DIR/shared/personal-data-check.sh"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/quality-checks.sh"
 
 # CRITICAL: Check for sensitive data in staged files
 if ! check_staged_files; then
+    exit 1
+fi
+
+if ! check_personal_data_staged; then
     exit 1
 fi
 

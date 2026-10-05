@@ -87,6 +87,7 @@ Automatically scans your code for sensitive data before committing or pushing:
 - **Private Keys**: RSA, DSA, EC, OpenSSH private keys
 - **Environment Variables**: Next.js, React, Vite env vars with actual values
 - **Authentication Credentials**: Passwords, secrets, tokens
+- **Personal data**: identity columns (`birth_number`, `rodne_cislo`, `phone`, `phone_alt`, `national_id`) outside tables listed in `config/personal_data.yml`. Without that file, those columns are blocked on every table except `users`. `users.email` stays allowed for sign-in.
 
 **What happens**: If sensitive data is detected, the commit/push is blocked with helpful error messages and suggestions on how to fix it.
 
