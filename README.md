@@ -110,6 +110,11 @@ Nested apps (e.g. code under `web/`) should expose root npm scripts that delegat
 - Runs `npm test` when a `test` script exists (Vitest, Jest, Cypress wrappers, etc.)
 - Skipped for Heroku pushes (deploy first, then test the deployed app if needed)
 
+#### Kaloko
+- When `kaloko.config.yml` exists and the root `package.json` has `kaloko:smoke` (or `kaloko`), pre-push runs that script after unit tests
+- Repos without Kaloko skip this check
+- Heroku pushes skip Kaloko the same way they skip unit tests
+
 #### Build Checks
 - Runs `npm run build` when pushing to a Heroku remote and a `build` script exists
 - Blocks the push if the build fails
@@ -153,8 +158,9 @@ git commit
 1. 🔒 Block pushes to `main` / `master` (except remote named `heroku`)
 2. 🔒 Security check on commits being pushed
 3. 🧪 `npm test` (non-Heroku, if available)
-4. 🔨 Build check (Heroku only, if available)
-5. ✅ Push proceeds if all checks pass
+4. 🧪 Kaloko smoke (`npm run kaloko:smoke` when configured)
+5. 🔨 Build check (Heroku only, if available)
+6. ✅ Push proceeds if all checks pass
 
 ### Prepare-Commit-Msg Hook
 1. 📋 Analyzes staged files
