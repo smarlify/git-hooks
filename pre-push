@@ -84,6 +84,9 @@ else
     if ! run_tests; then
         exit 1
     fi
+    if ! run_kaloko_if_available; then
+        exit 1
+    fi
 fi
 
 echo "${GREEN}🎉 All pre-push checks passed!${NC}"
